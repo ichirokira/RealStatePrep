@@ -8,6 +8,9 @@ import numpy as np
 import math
 import CoefficientFinder as cf
 
+# For better readability
+line = "-----"* 10
+
 # --- -- -- - - - Degree Estimation Functions - - -- -- --- #
 
 def AnalyticalDegreeFromError(sigma: float, error: float) -> int:
@@ -57,9 +60,7 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
       poly = init.CoeffListToPolynomial(coeff_list, "TAYLOR")
       delta = np.max(np.abs(poly(x_eval) - targ_func(x_eval)))
 
-      print("-----"* 10) if verbose else None
-      print(f"degree={d} gives delta={delta}") if verbose else None
-      print("-----"* 10) if verbose else None
+      print(f"{line}\ndegree={d} gives delta={delta}\n{line}") if verbose else None
 
       print(f"Value of x @ degree {d} giving largest delta: {x_eval[np.argmax(np.abs(poly(x_eval) - targ_func(x_eval)))]}\n") if verbose else None
 
@@ -99,9 +100,8 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
 
           plt.show()
         # If previous is too small, increment degree
-        print("-----"* 10) if verbose else None
-        print(f"Final degree: {final_deg} | {d+2}") if verbose else None
-        print("-----"* 10) if verbose else None
+        print(f"{line}\nFinal degree: {final_deg} giving delta={delta}\n{line}") if verbose else None
+
         return final_deg
       
 
@@ -203,29 +203,19 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
                         (!) We will use the numerical bound *or* you can re-run the function with a better starting degree.(!) \n \
                         (1) We suggest a new starting bound of {numerical_degree + 4}. (!)") if verbose else None
             working_degree = numerical_degree
-            print("-----"*10) if verbose else None
-            print(f"Your initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
-            print("-----"*10) if verbose else None
-            print("\n") if verbose else None
+
+            print(f"{line}\nYour initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
         else:
             print(f"Your initial degree guess of {init_trunc_degree} is larger than the numerical bound of {numerical_degree}.\n (!)We will use the numerical bound.(!)\n") if verbose else None
             working_degree = numerical_degree
-            print("-----"*10) if verbose else None
-            print(f"Your initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
-            print("-----"*10) if verbose else None
-            print("\n") if verbose else None
+            print(f"{line}\nYour initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
     else:
         print(f"Your initial degree guess {init_trunc_degree} is larger than the naive bound of {naive_degree}, so we start from the latter and try get a better bound.\n") if verbose else None
         working_degree = NumericalDegreeFromError(sigma, error, 10, initial_degree = naive_degree)
-        print("-----"*10) if verbose else None
-        print(f"Your initial degree guess {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
-        print("-----"*10) if verbose else None
-        print("\n") if verbose else None
+
+        print(f"{line}\nYour initial degree guess {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
   
-    print("-----"*10) if verbose else None
-    print(f"> The working degree is now {working_degree} <") if verbose else None
-    print("-----"*10) if verbose else None
-    print("\n") if verbose else None
+    print(f"{line}\n> The working degree is {working_degree} <\n{line}\n") if verbose else None
 
     # Add code to allow user to overrule
     user_input = input(f"Do you want to use a different working degree? (y/n): ")
@@ -235,9 +225,7 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
                 new_degree = int(input("Enter the desired even, non-negative degree: "))
                 if new_degree >= 0 and new_degree % 2 == 0:
                     working_degree = new_degree
-                    print("-----"*10) if verbose else None
-                    print(f"> Using user-specified degree: {working_degree} <") if verbose else None
-                    print("-----"*10) if verbose else None
+                    print(f"{line}\n> The working degree is now {working_degree} <\n{line}\n") if verbose else None 
                     break
                 else:
                     print("Invalid input. Please enter an even, non-negative integer.")

@@ -51,6 +51,12 @@ class TargetSeriesCoefficients:
             raise ValueError("Sigma must be positive.")
         self.sigma = sigma
 
+    def __repr__(self):
+        return f"TargetSeriesCoefficients(sigma={self.sigma})"
+    
+    def __str__(self):
+        return f"TargetSeriesCoefficients with sigma={self.sigma}"
+
     def insert_zeros_loop(self, original_list: list) -> list:
         """
         Inserts a zero after each element in the original list, except for the last element.
@@ -105,6 +111,8 @@ class TargetSeriesCoefficients:
             m (int): The index of the coefficient to return.
         Returns:
             float: The m-th order coefficient of the Cauchy product of arcsine with itself.
+        Note:
+            attempting to cache this did not yield a significant speedup, so we compute it directly.
         """
         if m < 0:
             raise ValueError("m must be non-negative.")

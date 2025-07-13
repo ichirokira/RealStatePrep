@@ -2,7 +2,7 @@
 
 import cirq
 
-def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n: int) -> cirq.Circuit:
+def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n: int, decomposition: bool= False) -> tuple:
     """
     Implements a unitary with controlled Ry rotations and a final X gate on an ancilla.
 
@@ -10,11 +10,31 @@ def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n:
         ancilla_qb: The ancilla qubit.
         workspace_qbs: A list of n workspace qubits (x_1, ..., x_n).
         n: The number of workspace registers. This should be equal to len(workspace_qbs).
+        decomposition: If True, returns a decomposed circuit. Default is False.
 
     Returns:
-        A cirq.Circuit implementing the specified unitary.
+        tuple: a tuple containing:
+            - cirq.Circuit: The circuit implementing the controlled Ry sequence.
+            - cirq.Decompose (list): If decomposition is True, returns a decomposed circuit list, else None.
     Note:
-        This is the block encoding we want
+        This is the block encoding we want.
+    ---
+    Example:
+    >>> anc_qb = cirq.NamedQubit('anc')
+    >>> workspace_qbs = [cirq.NamedQubit(f'x_{i}') for i in range(1, 4)]
+    >>> n = len(workspace_qbs)
+    >>> controlledRySequence(anc_qb, workspace_qbs, n)
+    (anc: ───Ry(0.08π)───Ry(0.159π)───Ry(0.318π)───X───
+            │           │            │
+    x_1: ───@───────────┼────────────┼────────────────
+                        │            │
+    x_2: ───────────────@────────────┼────────────────
+                                    │
+    x_3: ────────────────────────────@────────────────,
+    [cirq.Z(cirq.NamedQubit('anc')),
+    cirq.global_phase_operation(-1j),
+        ...,
+    cirq.X(cirq.NamedQubit('anc'))])
     """
     if len(workspace_qbs) != n:
         raise ValueError(f"Number of workspace qubits ({len(workspace_qbs)}) must equal n ({n}).")
@@ -35,7 +55,7 @@ def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n:
     # Finally, apply a bit flip gate X to the ancilla register
     circuit.append(cirq.X(ancilla_qb))
 
-    return circuit
+    return circuit , cirq.decompose(circuit) if decomposition else None
 
 class ControlledRySequenceGate(cirq.Gate):
     """
