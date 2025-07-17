@@ -1,8 +1,9 @@
 # QSPStatePrep.py
+# Gabriel Waite
 
 import cirq
 
-def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n: int, decomposition: bool= False) -> tuple:
+def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n: int) -> cirq.Circuit:
     """
     Implements a unitary with controlled Ry rotations and a final X gate on an ancilla.
 
@@ -10,31 +11,11 @@ def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n:
         ancilla_qb: The ancilla qubit.
         workspace_qbs: A list of n workspace qubits (x_1, ..., x_n).
         n: The number of workspace registers. This should be equal to len(workspace_qbs).
-        decomposition: If True, returns a decomposed circuit. Default is False.
 
     Returns:
-        tuple: a tuple containing:
-            - cirq.Circuit: The circuit implementing the controlled Ry sequence.
-            - cirq.Decompose (list): If decomposition is True, returns a decomposed circuit list, else None.
+        A cirq.Circuit implementing the specified unitary.
     Note:
-        This is the block encoding we want.
-    ---
-    Example:
-    >>> anc_qb = cirq.NamedQubit('anc')
-    >>> workspace_qbs = [cirq.NamedQubit(f'x_{i}') for i in range(1, 4)]
-    >>> n = len(workspace_qbs)
-    >>> controlledRySequence(anc_qb, workspace_qbs, n)
-    (anc: ───Ry(0.08π)───Ry(0.159π)───Ry(0.318π)───X───
-            │           │            │
-    x_1: ───@───────────┼────────────┼────────────────
-                        │            │
-    x_2: ───────────────@────────────┼────────────────
-                                    │
-    x_3: ────────────────────────────@────────────────,
-    [cirq.Z(cirq.NamedQubit('anc')),
-    cirq.global_phase_operation(-1j),
-        ...,
-    cirq.X(cirq.NamedQubit('anc'))])
+        This is the block encoding we want
     """
     if len(workspace_qbs) != n:
         raise ValueError(f"Number of workspace qubits ({len(workspace_qbs)}) must equal n ({n}).")
@@ -55,7 +36,7 @@ def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n:
     # Finally, apply a bit flip gate X to the ancilla register
     circuit.append(cirq.X(ancilla_qb))
 
-    return circuit , cirq.decompose(circuit) if decomposition else None
+    return circuit
 
 class ControlledRySequenceGate(cirq.Gate):
     """
@@ -100,46 +81,74 @@ class ControlledRySequenceGate(cirq.Gate):
     def __repr__(self):
         return f"ControlledRySequenceGate(num_workspace_qubits={self._num_workspace_qubits})"
     
-def StatePreparation(num_ws_qbs: int, angle_list: list) -> cirq.Circuit:
-    """
-    Implements the state preparation circuit using QSP with controlled Ry rotations.
-    Args:
-        sigma (float): The parameter for the target function.
-        num_ws_qbs (int): The number of workspace qubits.
-        angle_list (list): A list of angles for the QSP rotations.
-    Returns:
-        cirq.Circuit: The circuit implementing the state preparation.
-    """
-    n = num_ws_qbs # Number of workspace qubits
+class CRGate(cirq.Gate):
+    """Implements the controlled rotation CR[control, target; phi]."""
 
-    # Setup circuit qubits
-    ancilla = [cirq.NamedQubit(f'{desc}_anc') for desc in ['qsp','rbe']] # quantum signal processing ancilla and rotation block encoding ancilla
-    workspace = [cirq.NamedQubit(f'x_{i}') for i in range(1,n+1)]
+    def __init__(self, phi: float):
+        """Initializes the CRGate.
 
-    # Initialise the circuit
-    circuit = cirq.Circuit()
-    # Hadamard on first ancilla and all workspace
-    circuit.append(cirq.H(ancilla[0]))
-    circuit.append(cirq.H.on_each(workspace))
+        Args:
+            phi: The rotation angle in radians.
+        """
+        self.phi = phi
 
-    # cirq.rz(rads) is equivalent to 
-    #  exp(-i Z rads / 2) = cos(rads/2) I - i sin(rads/2) Z
-    #                     | 
-    #                     = [[exp(-i rads/2), 0], [0, exp(i rads/2)]]
-    # Define QSP operator
-    #   qsp_op = [[np.exp(1j * phi), 0.], [0., np.exp(-1j * phi)]]
+    def _num_qubits_(self) -> int:
+        """Returns the number of qubits this gate acts on."""
+        return 2
 
-    # Apply first QSP operator on first ancilla
-    phi_0 = angle_list[0]
-    circuit.append(cirq.rz(-2 * phi_0).on(ancilla[0]))
+    def _decompose_(self, qubits):
+        """Decomposes the CRGate into a list of Cirq operations.
 
+        Args:
+            qubits: A sequence of two qubits (control, target) the gate is applied to.
+        Yields:
+            Cirq operations that implement the CRGate.
+        """
+        control, target = qubits
+        yield cirq.X(control)
+        yield cirq.CNOT(control, target)
+        yield cirq.rz(-2 * self.phi).on(target)
+        yield cirq.CNOT(control, target)
+        yield cirq.X(control)
 
-    my_custom_gate = ControlledRySequenceGate(num_workspace_qubits=n)
-    be_qbs = [ancilla[1]] + workspace
-    # Apply RZ rotations for phi in the list from 1 onwards.
-    # Between each rotation, do a controlled unitary BE.
-    for phi in angle_list[1:]:
-        circuit.append(my_custom_gate.on(*be_qbs).controlled_by(ancilla[0]))
-        circuit.append(cirq.rz(-2 * phi).on(ancilla[0]))
+    def _circuit_diagram_info_(self, args: cirq.CircuitDiagramInfoArgs):
+        """Provides information for drawing the gate in a circuit diagram."""
+        return cirq.CircuitDiagramInfo(wire_symbols=("a","a"))
+    
+    def __eq__(self, other):
+        """Determines if two CRGate instances are equal."""
+        if not isinstance(other, type(self)):
+            return NotImplemented
+        return self.phi == other.phi
 
-    return circuit
+    def __hash__(self):
+        """Returns a hash for the CRGate instance."""
+        return hash((CRGate, self.phi))
+
+    def __repr__(self):
+        """Returns a string representation of the CRGate."""
+        return f"CRGate(phi={self.phi})"
+    
+def StatePrep(angle_list: list, num_ws_qbs: int):
+  n = num_ws_qbs
+
+  # setup circuit qubits
+  qsp_anc, be_anc = cirq.NamedQubit('qsp_anc'), cirq.NamedQubit('rbe_anc')
+  workspace = [cirq.NamedQubit(f'x_{i}') for i in range(1, n + 1)]
+
+  be_qbs = [be_anc] + workspace
+
+  # Initialise circuit
+  circuit = cirq.Circuit()
+  circuit.append(cirq.H.on_each(workspace))
+
+  BE_gate = ControlledRySequenceGate(num_workspace_qubits=n)
+
+  for i in range(len(angle_list)-1,0,-1):
+    print(angle_list[i])
+    circuit.append(CRGate(phi=angle_list[i])(be_anc, qsp_anc))
+    circuit.append(BE_gate(*be_qbs))
+  # add zeroth angle
+  circuit.append(CRGate(phi=angle_list[0])(be_anc, qsp_anc))
+
+  return circuit

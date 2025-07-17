@@ -1,4 +1,5 @@
 # AngleAnalysis.py
+# Gabriel Waite
 
 # !pip install pyqsp
 import pyqsp
@@ -7,9 +8,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 import CoefficientFinder as cf
-
-# For better readability
-line = "-----"* 10
 
 # --- -- -- - - - Degree Estimation Functions - - -- -- --- #
 
@@ -60,7 +58,9 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
       poly = init.CoeffListToPolynomial(coeff_list, "TAYLOR")
       delta = np.max(np.abs(poly(x_eval) - targ_func(x_eval)))
 
-      print(f"{line}\ndegree={d} gives delta={delta}\n{line}") if verbose else None
+      print("-----"* 10) if verbose else None
+      print(f"degree={d} gives delta={delta}") if verbose else None
+      print("-----"* 10) if verbose else None
 
       print(f"Value of x @ degree {d} giving largest delta: {x_eval[np.argmax(np.abs(poly(x_eval) - targ_func(x_eval)))]}\n") if verbose else None
 
@@ -100,16 +100,35 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
 
           plt.show()
         # If previous is too small, increment degree
-        print(f"{line}\nFinal degree: {final_deg} giving delta={delta}\n{line}") if verbose else None
-
+        print("-----"* 10) if verbose else None
+        print(f"Final degree: {final_deg} | {d+2}") if verbose else None
+        print("-----"* 10) if verbose else None
         return final_deg
       
 
 # --- -- -- - - - Quantum Signal Processing Functions - - -- -- --- #
 
+def angle_shift(angle_list: list) -> list:
+    """
+    Shifts the angles in the angle list by pi/4 or pi/2.
+    Args:
+        angle_list (list): List of angles to be shifted from pyqsp.
+    Returns:
+        list: List of shifted angles.
+    Note:
+        This is necessary because the angles returned by pyqsp are w.r.t W(x) operator, but we use R(x) operator.
+    """
+    shifted_angle_set = []
+    for phi in range(len(angle_list)):
+        if phi == 0 or phi == len(angle_list) - 1:
+            shifted_angle_set.append(angle_list[phi] - np.pi/4)
+        else:
+            shifted_angle_set.append(angle_list[phi] - np.pi/2)
+
+    return shifted_angle_set
+
 def QSPTest(angle_list: list, x_data: list) -> tuple:
     """
-    **A lot copied over from pyqsp.**
     Computes the output of a Quantum Signal Processing (QSP) operation for given angles and input data.
     Args:
         angle_list (list): List of angles for the QSP operation.
@@ -119,11 +138,18 @@ def QSPTest(angle_list: list, x_data: list) -> tuple:
             - y_data (list): The output data after applying the QSP operation.
             - imag_data (list): The imaginary parts of the output data.
             - real_data (list): The real parts of the output data.
+    Note:
+        ** Important: The signal operator we use is not the standard W(x) operator, but one we call R(x) **
+            W(x) = [[x, 1j * sqrt(1 - x^2)], [1j * sqrt(1 - x^2), x]]
+            R(x) = [[x, sqrt(1 - x^2)], [sqrt(1 - x^2), -x]]
+        It follows that:
+            R(x) = -1j * exp(1j * pi/4) * W(x) * exp(1j * pi/4)
+        ** If output function is not as expected, try shifting the angles **
     """
     # Define Signal Operator
     sig_op = lambda x: np.array(
-            [[x, 1j * np.sqrt(1 - x**2)],
-             [1j * np.sqrt(1 - x**2), x]])
+            [[x, np.sqrt(1 - x**2)],
+             [np.sqrt(1 - x**2), -x]])
     
     # Define Angle Operator
     qsp_op = lambda phi: np.array(
@@ -136,10 +162,10 @@ def QSPTest(angle_list: list, x_data: list) -> tuple:
         
     y_data = []
     for x in x_data:
-        W = sig_op(x)
+        R = (1j) * sig_op(x)
         U = angle_matrices[0]
         for angle_matrix in angle_matrices[1:]:
-            U = U @ W @ angle_matrix
+            U = U @ R @ angle_matrix
         y_data.append(U[0, 0]) # Take the top left element as the output
 
     return y_data, [np.imag(y) for y in y_data], [np.real(y) for y in y_data]
@@ -160,7 +186,7 @@ def GetQSPAngleList(sigma: float, max_degree: int) -> list:
     coeff_list = X.ListTargetChebyCoeff(int(max_degree//2)) # Recall that ListTargetChebyCoeff takes a even number corresponding to index of coefficient.
     poly_data = X.CoeffListToPolynomial(coeff_list, "CHEBYSHEV")
 
-    return angle_sequence.QuantumSignalProcessingPhases(poly_data, method='sym_qsp', chebyshev_basis=True)[0]
+    return angle_shift(angle_sequence.QuantumSignalProcessingPhases(poly_data, method='sym_qsp', chebyshev_basis=True)[0])
 
 def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot: bool=False, verbose: bool=True) -> tuple:
     """
@@ -185,6 +211,7 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
         The function then computes the QSP angle list using the working degree, which is either the init_trunc_degree or the numerical bound.
         If plot is True, it will plot the approximated function against the target function and the absolute difference.
         **We require a degree as input and not an index, so the input should be an even integer.**
+        We shift the angles by pi/4 or pi/2 to account for the difference between the W(x) and R(x) operators.
     """
 
     if init_trunc_degree < 0 or init_trunc_degree % 2 != 0:
@@ -203,19 +230,29 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
                         (!) We will use the numerical bound *or* you can re-run the function with a better starting degree.(!) \n \
                         (1) We suggest a new starting bound of {numerical_degree + 4}. (!)") if verbose else None
             working_degree = numerical_degree
-
-            print(f"{line}\nYour initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
+            print("-----"*10) if verbose else None
+            print(f"Your initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
+            print("-----"*10) if verbose else None
+            print("\n") if verbose else None
         else:
             print(f"Your initial degree guess of {init_trunc_degree} is larger than the numerical bound of {numerical_degree}.\n (!)We will use the numerical bound.(!)\n") if verbose else None
             working_degree = numerical_degree
-            print(f"{line}\nYour initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
+            print("-----"*10) if verbose else None
+            print(f"Your initial degree guess of {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
+            print("-----"*10) if verbose else None
+            print("\n") if verbose else None
     else:
         print(f"Your initial degree guess {init_trunc_degree} is larger than the naive bound of {naive_degree}, so we start from the latter and try get a better bound.\n") if verbose else None
         working_degree = NumericalDegreeFromError(sigma, error, 10, initial_degree = naive_degree)
-
-        print(f"{line}\nYour initial degree guess {init_trunc_degree} is reduced to {working_degree}(!)\n{line}\n") if verbose else None
+        print("-----"*10) if verbose else None
+        print(f"Your initial degree guess {init_trunc_degree} is reduced to {working_degree}(!)") if verbose else None
+        print("-----"*10) if verbose else None
+        print("\n") if verbose else None
   
-    print(f"{line}\n> The working degree is {working_degree} <\n{line}\n") if verbose else None
+    print("-----"*10) if verbose else None
+    print(f"> The working degree is now {working_degree} <") if verbose else None
+    print("-----"*10) if verbose else None
+    print("\n") if verbose else None
 
     # Add code to allow user to overrule
     user_input = input(f"Do you want to use a different working degree? (y/n): ")
@@ -225,7 +262,9 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
                 new_degree = int(input("Enter the desired even, non-negative degree: "))
                 if new_degree >= 0 and new_degree % 2 == 0:
                     working_degree = new_degree
-                    print(f"{line}\n> The working degree is now {working_degree} <\n{line}\n") if verbose else None 
+                    print("-----"*10) if verbose else None
+                    print(f"> Using user-specified degree: {working_degree} <") if verbose else None
+                    print("-----"*10) if verbose else None
                     break
                 else:
                     print("Invalid input. Please enter an even, non-negative integer.")
@@ -267,9 +306,9 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
             
         plt.show() if plot else None
 
-    return angle_list, working_degree, numerical_degree, naive_degree
+    return angle_shift(angle_list), working_degree, numerical_degree, naive_degree
 
-def SaveQSPAngleListToFile(sigma: float, init_degree: int, error: float, angle_list: list, filename: str):
+def SaveQSPAngleListToFile(sigma: float, init_degree: int, error: float, filename: str):
     if filename is None or not isinstance(filename, str):
         raise ValueError("Please provide a file name ending with '.txt'.")
     if not filename.endswith('.txt'):
@@ -288,5 +327,5 @@ def SaveQSPAngleListToFile(sigma: float, init_degree: int, error: float, angle_l
         f.write(f"Working Degree = {working_degree}\n")
         f.write(f"Error = {error}\n")
         f.write("————————————————————\n\n")
-        f.write(angle_list)
+        f.write(str(angle_list))
         f.write("\n")
