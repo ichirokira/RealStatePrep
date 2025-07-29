@@ -2,6 +2,7 @@
 # Gabriel Waite
 
 import cirq
+import numpy as np
 
 def controlledRySequence(ancilla_qb: cirq.Qid, workspace_qbs: list[cirq.Qid], n: int) -> cirq.Circuit:
     """
@@ -113,7 +114,7 @@ class CRGate(cirq.Gate):
 
     def _circuit_diagram_info_(self, args: cirq.CircuitDiagramInfoArgs):
         """Provides information for drawing the gate in a circuit diagram."""
-        return cirq.CircuitDiagramInfo(wire_symbols=("a","a"))
+        return cirq.CircuitDiagramInfo(wire_symbols=("CR","CR"), connected=True)
     
     def __eq__(self, other):
         """Determines if two CRGate instances are equal."""
@@ -130,25 +131,135 @@ class CRGate(cirq.Gate):
         return f"CRGate(phi={self.phi})"
     
 def StatePrep(angle_list: list, num_ws_qbs: int):
-  n = num_ws_qbs
+    """
+    Prepares a quantum state using the given angles.
+    Args:
+        angle_list: List of angles for the QSP.
+        num_ws_qbs: Number of workspace qubits.
+    Returns:
+        A cirq.Circuit that prepares the specified quantum state.
+    """
+    n = num_ws_qbs
 
-  # setup circuit qubits
-  qsp_anc, be_anc = cirq.NamedQubit('qsp_anc'), cirq.NamedQubit('rbe_anc')
-  workspace = [cirq.NamedQubit(f'x_{i}') for i in range(1, n + 1)]
+    # setup circuit qubits
+    qsp_anc, be_anc = cirq.NamedQubit('qsp_anc'), cirq.NamedQubit('rbe_anc')
+    workspace = [cirq.NamedQubit(f'x_{i}') for i in range(1, n + 1)]
 
-  be_qbs = [be_anc] + workspace
+    be_qbs = [be_anc] + workspace
 
-  # Initialise circuit
-  circuit = cirq.Circuit()
-  circuit.append(cirq.H.on_each(workspace))
+    # Initialise circuit
+    circuit = cirq.Circuit()
+    circuit.append(cirq.H.on(qsp_anc))
+    circuit.append(cirq.H.on_each(workspace))
 
-  BE_gate = ControlledRySequenceGate(num_workspace_qubits=n)
+    BE_gate = ControlledRySequenceGate(num_workspace_qubits=n)
 
-  for i in range(len(angle_list)-1,0,-1):
-    print(angle_list[i])
-    circuit.append(CRGate(phi=angle_list[i])(be_anc, qsp_anc))
-    circuit.append(BE_gate(*be_qbs))
-  # add zeroth angle
-  circuit.append(CRGate(phi=angle_list[0])(be_anc, qsp_anc))
+    for i in range(len(angle_list)-1,0,-1):
+        print(angle_list[i])
+        circuit.append(CRGate(phi=angle_list[i])(be_anc, qsp_anc))
+        circuit.append(BE_gate(*be_qbs))
+    # add zeroth angle
+    circuit.append(CRGate(phi=angle_list[0])(be_anc, qsp_anc))
 
-  return circuit
+    circuit.append(cirq.H.on(qsp_anc))
+
+    return circuit
+
+def SVFromStatePrepCircuit(angle_list: list, num_ws_qbs: int, init_state: list[int], verbose: bool = True):
+    """
+    Returns a Dirac notation state vector from the state preparation circuit, given the angles and initial state.
+
+    Args:
+        angle_list: List of angles for the QSP.
+        num_ws_qbs: Number of workspace qubits.
+        init_state: Initial state as a list of bits (0s and 1s).
+
+    Returns:
+        A cirq.Circuit that prepares the specified quantum state.
+    """
+    n = num_ws_qbs
+
+    # setup circuit qubits
+    qsp_anc, be_anc = cirq.NamedQubit('qsp_anc'), cirq.NamedQubit('rbe_anc')
+    workspace = [cirq.NamedQubit(f'x_{i}') for i in range(1, n + 1)]
+
+    be_qbs = [be_anc] + workspace
+
+    # Initialise circuit
+    circuit = cirq.Circuit()
+    circuit.append(cirq.H.on(qsp_anc))
+    
+    # Apply initial state preparation
+    for i, bit in enumerate(init_state):
+        if bit == 1:
+            index = n - i - 1 # Reverse the index for correct placement
+            circuit.append(cirq.X.on(workspace[index]))
+
+    BE_gate = ControlledRySequenceGate(num_workspace_qubits=n)
+
+    for i in range(len(angle_list)-1,0,-1):
+        print(angle_list[i])
+        circuit.append(CRGate(phi=angle_list[i])(be_anc, qsp_anc))
+        circuit.append(BE_gate(*be_qbs))
+    # add zeroth angle
+    circuit.append(CRGate(phi=angle_list[0])(be_anc, qsp_anc))
+
+    circuit.append(cirq.H.on(qsp_anc))
+
+    raw_sv = cirq.final_state_vector(circuit)
+    dirac_sv = cirq.dirac_notation(raw_sv)
+
+    if verbose:
+        sigma = float(input("Enter the value of sigma: "))
+        func = lambda x: np.exp(- (x**2) / (2 * sigma**2))
+        x_value = "".join(map(str, init_state))
+        x_value = int(x_value, 2) / (2**n)
+
+        # Define Signal Operator
+        sig_op = lambda x: np.array(
+                [[x, np.sqrt(1 - x**2)],
+                [np.sqrt(1 - x**2), -x]])
+        
+        # Define Angle Operator
+        qsp_op = lambda phi: np.array(
+            [[np.exp(1j * phi), 0.],
+                [0., np.exp(-1j * phi)]])
+        
+        angle_matrices = []
+        for phi in angle_list:
+            angle_matrices.append(qsp_op(phi))
+            
+
+        R = sig_op(x_value)
+        U = angle_matrices[0]
+        for angle_matrix in angle_matrices[1:]:
+            U = U @ R @ angle_matrix
+        
+        res = U[0, 0] # A complex number
+        im_res = res.imag
+        re_res = res.real
+        print("===="*10)
+        print(f"Real part of encoded function @ x = {x_value}:\n\t {re_res}\n")
+        print(f"Imaginary part of encoded function @ x = {x_value}: \n\t{im_res}\n")
+        print(f"Target function value at x = {x_value}: \n\t{func(x_value)}")
+        print("===="*10)
+
+    return raw_sv, dirac_sv
+
+def FullSVFromStatePrepCircuit(angle_list: list, num_ws_qbs: int) -> tuple[np.array, str]:
+    """
+    Generates the full state vector from the QSP state preparation circuit.
+    Args:
+        angle_list: A list of angles used in the QSP state preparation.
+        num_ws_qbs: The number of workspace qubits used in the circuit.
+    Returns:
+        A tuple containing the raw state vector and its Dirac notation.
+    """
+    # setup circuit 
+    circuit = StatePrep(angle_list, num_ws_qbs)
+
+    raw_sv = cirq.final_state_vector(circuit)
+    dirac_sv = cirq.dirac_notation(raw_sv)
+
+    return raw_sv, dirac_sv
+    

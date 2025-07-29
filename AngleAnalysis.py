@@ -276,7 +276,7 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
     # Given the working_degree we can call GetQSPAngleList.
     # Recall that the working_degree is twice the index we need to call.
     print(f"This is the type of the working degree divided by 2: {type(working_degree//2)}") 
-    angle_list = GetQSPAngleList(sigma, working_degree)
+    angle_list = GetQSPAngleList(sigma, working_degree) # Recall this shifts the angles!
 
     if plot == True:
         y_plot_data = QSPTest(angle_list, np.linspace(0, 1, 100))[1]
@@ -290,7 +290,7 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
         axs[0].axvline(x=np.sin(1), color='g', linestyle='--', label='x = sin(1)')
         axs[0].set_xlabel('X-axis')
         axs[0].set_ylabel('Y-axis')
-        axs[0].set_title('Action of the approximation polynomial on the Wx operator')
+        axs[0].set_title('Action of the approximation polynomial on the Signal operator')
         axs[0].grid(True)
         axs[0].legend()
 
@@ -306,7 +306,8 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
             
         plt.show() if plot else None
 
-    return angle_shift(angle_list), working_degree, numerical_degree, naive_degree
+    # We do not need to call the angle_shift function here, as it is already done in GetQSPAngleList.
+    return angle_list, working_degree, numerical_degree, naive_degree
 
 def SaveQSPAngleListToFile(sigma: float, init_degree: int, error: float, filename: str):
     if filename is None or not isinstance(filename, str):
