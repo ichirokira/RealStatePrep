@@ -46,19 +46,40 @@ def PlotSignatureVectorElements(coefficients: list[tuple], num_qs_qbs: int, sigm
     n,l = num_qs_qbs, len(coefficients)
     x = np.arange(l)
     re_coeff, im_coeff = [i[0] for i in coefficients], [i[1] for i in coefficients]
-    r = max(im_coeff)
+    r_max, r_min = max(im_coeff), min(im_coeff)
     
-    func = lambda x: r * np.exp(- ((x/2**n)**2) / (2 * sigma**2))
+    func_max = lambda x: r_max * np.exp(- ((x/2**n)**2) / (2 * sigma**2))
+    func_min = lambda x: r_min * np.exp(- ((x/2**n)**2) / (2 * sigma**2))
 
-    plt.scatter(x, re_coeff, label='Real')
-    plt.scatter(x, im_coeff, label='Imaginary')
-    plt.plot(x, re_coeff, label='Real', alpha=0.5)
-    plt.plot(x, im_coeff, label='Imaginary', alpha=0.5)
-    plt.plot(np.linspace(0,2**n - 1,50), func(np.linspace(0,2**n - 1,50)), label='Target')
-    plt.xlabel('Index')
-    plt.ylabel('Coefficient')
-    plt.title('Signature Vector Coefficients')
-    plt.legend()
+    _, axs = plt.subplots(1, 3, figsize=(20, 10))
+
+    axs[0].scatter(x, re_coeff, label='Real')
+    axs[0].scatter(x, im_coeff, label='Imaginary')
+    axs[0].plot(x, re_coeff, alpha=0.5)
+    axs[0].plot(x, im_coeff, alpha=0.5)
+    axs[0].plot(np.linspace(0,2**n - 1,50), func_max(np.linspace(0,2**n - 1,50)), label='Target - Max scale')
+    axs[0].plot(np.linspace(0,2**n - 1,50), func_min(np.linspace(0,2**n - 1,50)), label='Target - Min scale')
+    axs[0].set_xlabel('Index')
+    axs[0].set_ylabel('Coefficient')
+    axs[0].set_title('Signature Vector Coefficients')
+    axs[0].legend()
+
+    delta_max = np.abs(im_coeff - func_max(x))
+    delta_min = np.abs(im_coeff - func_min(x))
+    axs[1].set_yscale('log')
+    axs[1].scatter(x, delta_max, label='Delta Max', color='g')
+    axs[1].plot(x, delta_max, label='Delta Max', color='g', alpha=0.5)
+    axs[1].set_xlabel('Index')
+    axs[1].set_ylabel('Delta Max')
+    axs[1].set_title('Delta Max from Target Function')
+
+    axs[2].set_yscale('log')
+    axs[2].scatter(x, delta_min, label='Delta Min', color='r')
+    axs[2].plot(x, delta_min, label='Delta Min', color='r', alpha=0.5)
+    axs[2].set_xlabel('Index')
+    axs[2].set_ylabel('Delta Min')
+    axs[2].set_title('Delta Min from Target Function')
+
     plt.show()
 
 def FullSVFromStatePrepCircuit(angle_list: list, num_ws_qbs: int) -> tuple[np.array, str]:
