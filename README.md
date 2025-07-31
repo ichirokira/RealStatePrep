@@ -1,14 +1,13 @@
 <div align="center">
-<h1><img width="300" src="https://studentutsedu.sharepoint.com/sites/feit-qsi/_api/siteiconmanager/getsitelogo?type=%271%27">&nbsp;</h1>
-<br>
-<h1>Real State Preparation Benchmarks</h1>
-    <br>
-</div>
-<br>
-<div align="center">
-    <a target="_blank" href="http://facebook.com/utsfeit"><img src="https://img.shields.io/badge/style--5eba00.svg?label=Facebook&logo=facebook&style=social"></a>&nbsp;
+<img width="300" src="https://pbs.twimg.com/profile_images/807108296796557316/3UtQWApG_400x400.jpg">&nbsp;
+
+<a target="_blank" href="http://facebook.com/utsfeit"><img src="https://img.shields.io/badge/style--5eba00.svg?label=Facebook&logo=facebook&style=social"></a>&nbsp;
     <a target="_blank" href="https://twitter.com/UTS_QSI"><img src="https://img.shields.io/twitter/follow/GokuMohandas.svg?label=Follow&style=social"></a>
     <a target="_blank" href="http://instagram.com/utsengineeringandit"><img src="https://img.shields.io/badge/style--5eba00.svg?label=Instagram&logo=instagram&style=social"></a>
+</div>
+<div align="center">
+    <br>
+    <h1>Real State Preparation Benchmarks</h1>
     <br>
     🔥&nbsp; Developed by Tuyen Quang Nguyen, Gabe Waite, Alan Robertson, ...🔥
 </div>
