@@ -1,0 +1,5 @@
+# requirements.txt
+numpy==1.26.4
+pyqsp==0.2.0
+cirq==1.6.0
+qualtran==0.4.0
