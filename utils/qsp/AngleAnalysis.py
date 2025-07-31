@@ -2,12 +2,11 @@
 # Gabriel Waite
 
 # !pip install pyqsp
-import pyqsp
 from pyqsp import angle_sequence
 import matplotlib.pyplot as plt
 import numpy as np
 import math
-import CoefficientFinder as cf
+from .CoefficientFinder import TargetSeriesCoefficients
 
 # --- -- -- - - - Degree Estimation Functions - - -- -- --- #
 
@@ -53,7 +52,7 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
     final_poly = None
     
     while True:
-      init = cf.TargetSeriesCoefficients(sigma=sigma)
+      init = TargetSeriesCoefficients(sigma=sigma)
       coeff_list = init.ListTargetTaylorCoeff(d//2)
       poly = init.CoeffListToPolynomial(coeff_list, "TAYLOR")
       delta = np.max(np.abs(poly(x_eval) - targ_func(x_eval)))
@@ -72,7 +71,7 @@ def NumericalDegreeFromError(sigma: float, error: float, n: int, initial_degree 
             break 
       else:
         final_deg = d + 2
-        init = cf.TargetSeriesCoefficients(sigma=sigma)
+        init = TargetSeriesCoefficients(sigma=sigma)
         coeff_list = init.ListTargetTaylorCoeff(final_deg // 2)
         final_poly = init.CoeffListToPolynomial(coeff_list, "TAYLOR")
 
@@ -182,7 +181,7 @@ def GetQSPAngleList(sigma: float, max_degree: int) -> list:
     if max_degree < 0 or max_degree % 2 != 0:
         raise ValueError("max_degree must be a non-negative even integer.")
 
-    X = cf.TargetSeriesCoefficients(sigma) # Initialise the instance
+    X = TargetSeriesCoefficients(sigma) # Initialise the instance
     coeff_list = X.ListTargetChebyCoeff(int(max_degree//2)) # Recall that ListTargetChebyCoeff takes a even number corresponding to index of coefficient.
     poly_data = X.CoeffListToPolynomial(coeff_list, "CHEBYSHEV")
 
@@ -254,24 +253,24 @@ def GetQSPAngleListAdv(sigma: float, init_trunc_degree: int, error: float, plot:
     print("-----"*10) if verbose else None
     print("\n") if verbose else None
 
-    # Add code to allow user to overrule
-    user_input = input(f"Do you want to use a different working degree? (y/n): ")
-    if user_input.lower() == 'y':
-        while True:
-            try:
-                new_degree = int(input("Enter the desired even, non-negative degree: "))
-                if new_degree >= 0 and new_degree % 2 == 0:
-                    working_degree = new_degree
-                    print("-----"*10) if verbose else None
-                    print(f"> Using user-specified degree: {working_degree} <") if verbose else None
-                    print("-----"*10) if verbose else None
-                    break
-                else:
-                    print("Invalid input. Please enter an even, non-negative integer.")
-            except ValueError:
-                print("Invalid input. Please enter an integer.")
-    else:
-        print("Using the calculated working degree.") if verbose else None
+    # # Add code to allow user to overrule
+    # user_input = input(f"Do you want to use a different working degree? (y/n): ")
+    # if user_input.lower() == 'y':
+    #     while True:
+    #         try:
+    #             new_degree = int(input("Enter the desired even, non-negative degree: "))
+    #             if new_degree >= 0 and new_degree % 2 == 0:
+    #                 working_degree = new_degree
+    #                 print("-----"*10) if verbose else None
+    #                 print(f"> Using user-specified degree: {working_degree} <") if verbose else None
+    #                 print("-----"*10) if verbose else None
+    #                 break
+    #             else:
+    #                 print("Invalid input. Please enter an even, non-negative integer.")
+    #         except ValueError:
+    #             print("Invalid input. Please enter an integer.")
+    # else:
+    print("Using the calculated working degree.") if verbose else None
 
     # Given the working_degree we can call GetQSPAngleList.
     # Recall that the working_degree is twice the index we need to call.

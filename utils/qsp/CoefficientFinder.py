@@ -1,6 +1,7 @@
 # CoefficientFinder.py
 # Gabriel Waite
-
+import os
+current_dir = os.path.dirname(__file__)
 import numpy as np 
 import math 
 import json
@@ -207,7 +208,7 @@ class TargetSeriesCoefficients:
         if degree < 0 or degree % 2 != 0 or degree > 100:
             raise ValueError("degree must be a non-negative even integer less than or equal to 100.")
         
-        with open('cheby_coeffs.json', 'r') as f:
+        with open(os.path.join(current_dir, 'cheby_coeffs.json'), 'r') as f:
             coeffs = json.load(f)
 
         return coeffs[int(degree/2)]
@@ -233,7 +234,7 @@ class TargetSeriesCoefficients:
         -> The second array corresponds to T_2(x) = -1 + 2x^2
         -> The third array corresponds to T_4(x) = 1 - 8x^2 + 8x^4
         """
-        with open('cheby_coeffs.json', 'r') as f:
+        with open(os.path.join(current_dir, 'cheby_coeffs.json'), 'r') as f:
             coeffs = json.load(f)
 
         return coeffs[:max_degree//2 + 1]

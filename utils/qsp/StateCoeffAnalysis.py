@@ -4,7 +4,7 @@
 import cirq
 import numpy as np
 import matplotlib.pyplot as plt
-import QSPStatePrep as qsp
+from .QSPStatePrep import *
 
 def SignatureVectorElements(vector: np.array, signature: list[int], len_rem_bits: int) -> list[tuple[float, float]]:
     """
@@ -92,7 +92,7 @@ def FullSVFromStatePrepCircuit(angle_list: list, num_ws_qbs: int) -> tuple[np.ar
         A tuple containing the raw state vector and its Dirac notation.
     """
     # setup circuit 
-    circuit = qsp.StatePrep(angle_list, num_ws_qbs)
+    circuit = StatePrep(angle_list, num_ws_qbs)
 
     raw_sv = cirq.final_state_vector(circuit)
     dirac_sv = cirq.dirac_notation(raw_sv)
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     np.float64(-0.7854005535036002)]
 
     # Seems that we want to post select the signature bits '10'
-    arr = qsp.FullSVFromStatePrepCircuit(test_angle_list,n)
+    arr = FullSVFromStatePrepCircuit(test_angle_list,n)
 
     vec = arr[0]
     PlotSignatureVectorElements(SignatureVectorElements(vec, [1,0], n), n, sigma)
