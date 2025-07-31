@@ -12,7 +12,7 @@ def get_argparse():
     parser = argparse.ArgumentParser()
     parser.add_argument('-n', '--system_nqubits', default=4)
     parser.add_argument('-err', '--error', default=1e-6)
-    parser.add_argument('-s', '--sigma', default=1.0)
+    parser.add_argument('-s', '--sigma', default=0.25)
     parser.add_argument('-f', '--figure', default='../results/qsp_stateprep_output.png',
                         help='Output file for the visualization')
     return parser.parse_args()
